@@ -152,32 +152,6 @@ terraform apply -var='desired_count=2'
 
 ---
 
-## Structure des fichiers
-
-```
-terraform/
-├── provider.tf              # Configuration AWS
-├── variables.tf             # Déclaration des variables
-├── terraform.tfvars         # Valeurs par défaut
-├── outputs.tf               # Outputs
-├── vpc.tf                   # VPC, Subnets, Routing
-├── ec2.tf                   # Instances, Key Pairs
-├── alb.tf                   # Load Balancer
-├── s3.tf                    # S3 Bucket
-├── iam.tf                   # CloudWatch, IAM
-├── jar-upload.tf            # Upload de fichiers
-├── user-data-eureka.sh      # Script de démarrage Eureka
-├── user-data-service.sh     # Script de démarrage services
-├── terraform.tfstate        # État actuel (sauvegardé localement)
-├── terraform.tfstate.backup # Backup
-├── upload-jars.sh           # Script upload Linux/Mac
-├── upload-jars.ps1          # Script upload Windows
-├── README_DEPLOYMENT.md     # Guide complet
-└── DEPLOYMENT_SUMMARY_FR.md # Résumé du déploiement
-```
-
----
-
 ## Troubleshooting rapide
 
 ### "No configuration files"
@@ -269,22 +243,3 @@ cp terraform.tfstate.backup terraform.tfstate
 terraform refresh
 ```
 
----
-
-## Pour une prochaine fois
-
-1. **Tous les fichiers sont en Terraform** ✅
-2. **Aucune ressource n'a été créée manuellement** ✅
-3. **L'état est stocké localement** (terraform.tfstate)
-4. **Pour relancer**: `terraform init && terraform apply`
-5. **Pour mettre à jour les JAR**: `./upload-jars.ps1` ou `./upload-jars.sh`
-
----
-
-**Questions ?** Consultez `README_DEPLOYMENT.md` pour plus de détails.
-
----
-
-Créé le : 7 mai 2026
-Terraform version: 1.14.9
-AWS Provider: 5.100.0
