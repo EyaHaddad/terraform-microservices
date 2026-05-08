@@ -58,6 +58,12 @@ resource "aws_security_group" "ec2" {
     protocol    = "tcp"
     cidr_blocks = ["10.0.0.0/16"]
   }
+  ingress { # ActiveMQ Web Console (TEMP DEV ONLY)
+    from_port   = 8161
+    to_port     = 8161
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # TEMP DEV ONLY
+  }
 
   tags = {
     Name = "${var.project_name}-ec2-sg"
