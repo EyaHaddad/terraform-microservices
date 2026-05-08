@@ -19,19 +19,39 @@ output "ec2_eureka_server_instance_id" {
 }
 
 output "ec2_product_service_private_ip" {
-  value = aws_instance.product_service.private_ip
+  value = try(aws_instance.product_service[0].private_ip, null)
 }
 
 output "ec2_product_service_instance_id" {
-  value = aws_instance.product_service.id
+  value = try(aws_instance.product_service[0].id, null)
 }
 
 output "ec2_cart_service_private_ip" {
-  value = aws_instance.cart_service.private_ip
+  value = try(aws_instance.cart_service[0].private_ip, null)
 }
 
 output "ec2_cart_service_instance_id" {
-  value = aws_instance.cart_service.id
+  value = try(aws_instance.cart_service[0].id, null)
+}
+
+output "product_alb_dns_name" {
+  description = "DNS name of the public Product Service load balancer"
+  value       = aws_lb.product.dns_name
+}
+
+output "product_alb_url" {
+  description = "Public URL of the Product Service load balancer"
+  value       = "http://${aws_lb.product.dns_name}"
+}
+
+output "cart_alb_dns_name" {
+  description = "DNS name of the public Cart Service load balancer"
+  value       = aws_lb.cart.dns_name
+}
+
+output "cart_alb_url" {
+  description = "Public URL of the Cart Service load balancer"
+  value       = "http://${aws_lb.cart.dns_name}"
 }
 
 output "ec2_api_gateway_private_ip" {

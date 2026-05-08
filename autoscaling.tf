@@ -115,9 +115,9 @@ resource "aws_launch_template" "gateway" {
 }
 
 resource "aws_autoscaling_group" "product" {
-  desired_capacity    = var.desired_count
-  max_size            = 3
-  min_size            = 1
+  desired_capacity    = var.product_desired_capacity
+  max_size            = var.product_max_size
+  min_size            = var.product_min_size
   vpc_zone_identifier = aws_subnet.public[*].id
 
   launch_template {
@@ -139,9 +139,9 @@ resource "aws_autoscaling_group" "product" {
 }
 
 resource "aws_autoscaling_group" "cart" {
-  desired_capacity    = var.desired_count
-  max_size            = 3
-  min_size            = 1
+  desired_capacity    = var.cart_desired_capacity
+  max_size            = var.cart_max_size
+  min_size            = var.cart_min_size
   vpc_zone_identifier = aws_subnet.public[*].id
 
   launch_template {
@@ -186,18 +186,62 @@ resource "aws_autoscaling_group" "gateway" {
   }
 }
 
-resource "aws_autoscaling_policy" "product_scale_up" {
-  name                   = "product-scale-up"
-  scaling_adjustment     = 1 // Increase desired capacity by 1
-  adjustment_type        = "ChangeInCapacity"
+resource "aws_autoscaling_policy" "product_request_tracking" {
+  name                   = "${var.project_name}-product-requests-tracking"
+  policy_type            = "TargetTrackingScaling"
   autoscaling_group_name = aws_autoscaling_group.product.name
+
+  target_tracking_configuration {
+    target_value = var.autoscaling_requests_per_target
+
+    predefined_metric_specification {
+      predefined_metric_type = "ALBRequestCountPerTarget"
+      resource_label         = "${aws_lb.product.arn_suffix}/${aws_lb_target_group.product_service.arn_suffix}"
+    }
+  }
 }
 
-resource "aws_autoscaling_policy" "cart_scale_up" {
-  name                   = "cart-scale-up"
-  scaling_adjustment     = 1
-  adjustment_type        = "ChangeInCapacity"
+resource "aws_autoscaling_policy" "product_cpu_tracking" {
+  name                   = "${var.project_name}-product-cpu-tracking"
+  policy_type            = "TargetTrackingScaling"
+  autoscaling_group_name = aws_autoscaling_group.product.name
+
+  target_tracking_configuration {
+    target_value = var.autoscaling_target_cpu
+
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+  }
+}
+
+resource "aws_autoscaling_policy" "cart_request_tracking" {
+  name                   = "${var.project_name}-cart-requests-tracking"
+  policy_type            = "TargetTrackingScaling"
   autoscaling_group_name = aws_autoscaling_group.cart.name
+
+  target_tracking_configuration {
+    target_value = var.autoscaling_requests_per_target
+
+    predefined_metric_specification {
+      predefined_metric_type = "ALBRequestCountPerTarget"
+      resource_label         = "${aws_lb.cart.arn_suffix}/${aws_lb_target_group.cart_service.arn_suffix}"
+    }
+  }
+}
+
+resource "aws_autoscaling_policy" "cart_cpu_tracking" {
+  name                   = "${var.project_name}-cart-cpu-tracking"
+  policy_type            = "TargetTrackingScaling"
+  autoscaling_group_name = aws_autoscaling_group.cart.name
+
+  target_tracking_configuration {
+    target_value = var.autoscaling_target_cpu
+
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+  }
 }
 
 resource "aws_autoscaling_policy" "gateway_scale_up" {

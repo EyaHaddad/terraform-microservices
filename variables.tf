@@ -88,6 +88,54 @@ variable "desired_count" {
   default     = 1
 }
 
+variable "product_min_size" {
+  description = "Minimum number of Product Service instances"
+  type        = number
+  default     = 2
+}
+
+variable "product_desired_capacity" {
+  description = "Desired number of Product Service instances"
+  type        = number
+  default     = 2
+}
+
+variable "product_max_size" {
+  description = "Maximum number of Product Service instances"
+  type        = number
+  default     = 4
+}
+
+variable "cart_min_size" {
+  description = "Minimum number of Cart Service instances"
+  type        = number
+  default     = 2
+}
+
+variable "cart_desired_capacity" {
+  description = "Desired number of Cart Service instances"
+  type        = number
+  default     = 2
+}
+
+variable "cart_max_size" {
+  description = "Maximum number of Cart Service instances"
+  type        = number
+  default     = 4
+}
+
+variable "autoscaling_target_cpu" {
+  description = "Average CPU percentage target for Product and Cart Auto Scaling"
+  type        = number
+  default     = 60
+}
+
+variable "autoscaling_requests_per_target" {
+  description = "Average ALB requests per target used for Product and Cart request-based Auto Scaling"
+  type        = number
+  default     = 100
+}
+
 variable "enable_standalone_service_instances" {
   description = "Create standalone EC2 instances for API Gateway, Product and Cart instead of relying only on Auto Scaling Groups"
   type        = bool

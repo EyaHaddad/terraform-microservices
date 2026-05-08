@@ -101,6 +101,7 @@ resource "aws_instance" "eureka_server" {
 
 # EC2 Instance for Product Service
 resource "aws_instance" "product_service" {
+  count                       = var.enable_standalone_service_instances ? 1 : 0
   ami                         = data.aws_ami.amazon_linux_2.id
   instance_type               = "t3.medium"
   key_name                    = aws_key_pair.ec2_key.key_name
@@ -126,6 +127,7 @@ resource "aws_instance" "product_service" {
 
 # EC2 Instance for Cart Service
 resource "aws_instance" "cart_service" {
+  count                       = var.enable_standalone_service_instances ? 1 : 0
   ami                         = data.aws_ami.amazon_linux_2.id
   instance_type               = "t3.medium"
   key_name                    = aws_key_pair.ec2_key.key_name
