@@ -45,7 +45,7 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-    ingress {
+  ingress {
     from_port   = 8761
     to_port     = 8761
     protocol    = "tcp"
@@ -62,7 +62,7 @@ resource "aws_security_group" "ec2" {
     from_port   = 8161
     to_port     = 8161
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # TEMP DEV ONLY
+    cidr_blocks = ["0.0.0.0/0"] # TEMP DEV ONLY
   }
 
   tags = {
@@ -184,7 +184,9 @@ resource "aws_instance" "activemq" {
 
   vpc_security_group_ids = [aws_security_group.ec2.id]
 
-  user_data = file("${path.module}/user-data-activemq.sh")
+  user_data = templatefile("${path.module}/user-data-activemq.sh", {
+    activemq_image = var.container_images.activemq
+  })
 
   tags = {
     Name = "${var.project_name}-activemq"
