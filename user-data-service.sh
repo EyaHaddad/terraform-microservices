@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euxo pipefail
 
 yum update -y
 yum install -y docker curl
@@ -24,6 +25,22 @@ for i in {1..60}; do
   sleep 5
 done
 
+if [ "${ACTIVEMQ_URL}" != "" ]; then
+  broker_host=$(echo "${ACTIVEMQ_URL}" | sed -E 's#^tcp://([^:]+):([0-9]+).*#\1#')
+  broker_port=$(echo "${ACTIVEMQ_URL}" | sed -E 's#^tcp://([^:]+):([0-9]+).*#\2#')
+
+  echo "Waiting for ActiveMQ broker..."
+  for i in {1..60}; do
+    if timeout 2 bash -c "cat < /dev/null > /dev/tcp/$broker_host/$broker_port"; then
+      echo "ActiveMQ is reachable!"
+      break
+    fi
+
+    echo "ActiveMQ not ready yet..."
+    sleep 5
+  done
+fi
+
 echo "Pulling Docker image..."
 docker pull ${DOCKER_IMAGE}
 
@@ -36,8 +53,6 @@ docker run -d \
   -e SPRING_PROFILES_ACTIVE=docker \
   -e SERVER_PORT=${PORT} \
   -e EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_URL} \
-  -e MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info \
-  -e MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS=always \
   -e SPRING_ACTIVEMQ_BROKER_URL=${ACTIVEMQ_URL} \
   ${DOCKER_IMAGE}
 

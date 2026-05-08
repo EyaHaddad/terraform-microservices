@@ -22,8 +22,8 @@ resource "aws_lb_target_group" "api_gateway" {
   target_type = "instance"
 
   health_check {
-    path     = "/api/products"
-    matcher  = "200-399"
+    path                = "/"
+    matcher             = "200-499"
     healthy_threshold   = 2
     unhealthy_threshold = 2
     timeout             = 5
@@ -56,8 +56,8 @@ resource "aws_lb_target_group" "product_service" {
   target_type = "instance"
 
   health_check {
-    path     = "/api/products"
-    matcher  = "200-399"
+    path                = "/"
+    matcher             = "200-499"
     healthy_threshold   = 2
     unhealthy_threshold = 2
     timeout             = 5
@@ -78,8 +78,8 @@ resource "aws_lb_target_group" "cart_service" {
   target_type = "instance"
 
   health_check {
-    path     = "/api/cart"
-    matcher  = "200-399"
+    path                = "/"
+    matcher             = "200-499"
     healthy_threshold   = 2
     unhealthy_threshold = 2
     timeout             = 5
@@ -123,19 +123,22 @@ resource "aws_lb_listener_rule" "cart" {
 }
 
 resource "aws_lb_target_group_attachment" "api_gateway" {
+  count            = var.enable_standalone_service_instances ? 1 : 0
   target_group_arn = aws_lb_target_group.api_gateway.arn
-  target_id        = aws_instance.api_gateway.id
+  target_id        = aws_instance.api_gateway[0].id
   port             = var.container_port_gateway
 }
 
 resource "aws_lb_target_group_attachment" "product_service" {
+  count            = var.enable_standalone_service_instances ? 1 : 0
   target_group_arn = aws_lb_target_group.product_service.arn
-  target_id        = aws_instance.product_service.id
+  target_id        = aws_instance.product_service[0].id
   port             = var.container_port_product
 }
 
 resource "aws_lb_target_group_attachment" "cart_service" {
+  count            = var.enable_standalone_service_instances ? 1 : 0
   target_group_arn = aws_lb_target_group.cart_service.arn
-  target_id        = aws_instance.cart_service.id
+  target_id        = aws_instance.cart_service[0].id
   port             = var.container_port_cart
 }

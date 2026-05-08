@@ -20,32 +20,32 @@ output "ec2_eureka_server_instance_id" {
 
 output "ec2_product_service_private_ip" {
   description = "Private IP of Product Service EC2 instance"
-  value       = aws_instance.product_service.private_ip
+  value       = try(aws_instance.product_service[0].private_ip, null)
 }
 
 output "ec2_product_service_instance_id" {
   description = "Instance ID of Product Service"
-  value       = aws_instance.product_service.id
+  value       = try(aws_instance.product_service[0].id, null)
 }
 
 output "ec2_cart_service_private_ip" {
   description = "Private IP of Cart Service EC2 instance"
-  value       = aws_instance.cart_service.private_ip
+  value       = try(aws_instance.cart_service[0].private_ip, null)
 }
 
 output "ec2_cart_service_instance_id" {
   description = "Instance ID of Cart Service"
-  value       = aws_instance.cart_service.id
+  value       = try(aws_instance.cart_service[0].id, null)
 }
 
 output "ec2_api_gateway_private_ip" {
   description = "Private IP of API Gateway EC2 instance"
-  value       = aws_instance.api_gateway.private_ip
+  value       = try(aws_instance.api_gateway[0].private_ip, null)
 }
 
 output "ec2_api_gateway_instance_id" {
   description = "Instance ID of API Gateway"
-  value       = aws_instance.api_gateway.id
+  value       = try(aws_instance.api_gateway[0].id, null)
 }
 
 output "ec2_key_pair_name" {

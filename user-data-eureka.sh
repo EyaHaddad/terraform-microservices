@@ -25,8 +25,6 @@ docker run -d \
   -e SERVER_PORT=8761 \
   -e EUREKA_CLIENT_REGISTER_WITH_EUREKA=false \
   -e EUREKA_CLIENT_FETCH_REGISTRY=false \
-  -e MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info \
-  -e MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS=always \
   ${eureka_image}
 
 echo "Waiting for Eureka to become available..."

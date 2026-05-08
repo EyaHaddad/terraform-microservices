@@ -6,6 +6,29 @@ resource "aws_launch_template" "product" {
   instance_type = "t3.medium"
   key_name      = aws_key_pair.ec2_key.key_name
 
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups             = [aws_security_group.ec2.id]
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name    = "${var.project_name}-product"
+      Service = "product-service"
+    }
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+
+    tags = {
+      Name    = "${var.project_name}-product-volume"
+      Service = "product-service"
+    }
+  }
+
   user_data = base64encode(templatefile("${path.module}/user-data-service.sh", {
     SERVICE_NAME = "product-service"
     DOCKER_IMAGE = var.container_images.product
@@ -20,6 +43,29 @@ resource "aws_launch_template" "cart" {
   image_id      = data.aws_ami.amazon_linux_2.id
   instance_type = "t3.medium"
   key_name      = aws_key_pair.ec2_key.key_name
+
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups             = [aws_security_group.ec2.id]
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name    = "${var.project_name}-cart"
+      Service = "cart-service"
+    }
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+
+    tags = {
+      Name    = "${var.project_name}-cart-volume"
+      Service = "cart-service"
+    }
+  }
 
   user_data = base64encode(templatefile("${path.module}/user-data-service.sh", {
     SERVICE_NAME = "cart-service"
@@ -36,6 +82,29 @@ resource "aws_launch_template" "gateway" {
   instance_type = "t3.medium"
   key_name      = aws_key_pair.ec2_key.key_name
 
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups             = [aws_security_group.ec2.id]
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name    = "${var.project_name}-api-gateway"
+      Service = "api-gateway"
+    }
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+
+    tags = {
+      Name    = "${var.project_name}-api-gateway-volume"
+      Service = "api-gateway"
+    }
+  }
+
   user_data = base64encode(templatefile("${path.module}/user-data-service.sh", {
     SERVICE_NAME = "api-gateway"
     DOCKER_IMAGE = var.container_images.api_gateway
@@ -46,7 +115,7 @@ resource "aws_launch_template" "gateway" {
 }
 
 resource "aws_autoscaling_group" "product" {
-  desired_capacity     = 1
+  desired_capacity    = var.desired_count
   max_size            = 3
   min_size            = 1
   vpc_zone_identifier = aws_subnet.public[*].id
@@ -58,17 +127,19 @@ resource "aws_autoscaling_group" "product" {
 
   target_group_arns = [aws_lb_target_group.product_service.arn]
 
-  health_check_type = "ELB"
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+  depends_on                = [aws_instance.eureka_server, aws_instance.activemq]
 
   tag {
     key                 = "Name"
-    value               = "${var.project_name}-product-asg"
+    value               = "${var.project_name}-product"
     propagate_at_launch = true
   }
 }
 
 resource "aws_autoscaling_group" "cart" {
-  desired_capacity     = 1
+  desired_capacity    = var.desired_count
   max_size            = 3
   min_size            = 1
   vpc_zone_identifier = aws_subnet.public[*].id
@@ -80,11 +151,19 @@ resource "aws_autoscaling_group" "cart" {
 
   target_group_arns = [aws_lb_target_group.cart_service.arn]
 
-  health_check_type = "ELB"
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+  depends_on                = [aws_instance.eureka_server, aws_instance.activemq]
+
+  tag {
+    key                 = "Name"
+    value               = "${var.project_name}-cart"
+    propagate_at_launch = true
+  }
 }
 
 resource "aws_autoscaling_group" "gateway" {
-  desired_capacity     = 1
+  desired_capacity    = var.desired_count
   max_size            = 3
   min_size            = 1
   vpc_zone_identifier = aws_subnet.public[*].id
@@ -96,7 +175,15 @@ resource "aws_autoscaling_group" "gateway" {
 
   target_group_arns = [aws_lb_target_group.api_gateway.arn]
 
-  health_check_type = "ELB"
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+  depends_on                = [aws_instance.eureka_server, aws_instance.activemq]
+
+  tag {
+    key                 = "Name"
+    value               = "${var.project_name}-api-gateway"
+    propagate_at_launch = true
+  }
 }
 
 resource "aws_autoscaling_policy" "product_scale_up" {

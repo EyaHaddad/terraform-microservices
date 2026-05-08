@@ -88,6 +88,12 @@ variable "desired_count" {
   default     = 1
 }
 
+variable "enable_standalone_service_instances" {
+  description = "Create standalone EC2 instances for API Gateway, Product and Cart instead of relying only on Auto Scaling Groups"
+  type        = bool
+  default     = false
+}
+
 variable "container_images" {
   description = "Container images for services (Docker Hub images used by EC2 and local runs)"
   type = object({
@@ -109,7 +115,7 @@ variable "container_images" {
 variable "enable_nat_gateway" {
   description = "Enable NAT Gateway for private subnets"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "log_retention_days" {
