@@ -1,41 +1,44 @@
 #!/bin/bash
-set -e
 
-# Update system
 yum update -y
-yum install -y java-17-amazon-corretto curl wget
+yum install -y docker curl
 
-# Create app directory
+systemctl enable docker
+systemctl start docker
+
 mkdir -p /opt/ecommerce
 cd /opt/ecommerce
 
-# Download JAR file from S3
-echo "Downloading Eureka Server JAR from S3..."
-aws s3 cp s3://${s3_bucket}/${jar_file} . --region us-east-1
+echo "Stopping old Eureka container..."
+docker rm -f eureka-server || true
 
-if [ ! -f "${jar_file}" ]; then
-  echo "ERROR: Failed to download JAR file ${jar_file}"
-  exit 1
-fi
+echo "Pulling Eureka image..."
+docker pull ${eureka_image}
 
-# Make JAR executable
-chmod +x ${jar_file}
-echo "Downloaded: $(ls -lh ${jar_file})"
+echo "Starting Eureka container..."
 
-# Wait for system to fully initialize
-sleep 10
+docker run -d \
+  --name eureka-server \
+  --restart unless-stopped \
+  -p 8761:8761 \
+  -e SPRING_PROFILES_ACTIVE=docker \
+  -e SERVER_PORT=8761 \
+  -e EUREKA_CLIENT_REGISTER_WITH_EUREKA=false \
+  -e EUREKA_CLIENT_FETCH_REGISTRY=false \
+  -e MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info \
+  -e MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS=always \
+  ${eureka_image}
 
-# Start Eureka Server
-echo "Starting Eureka Server on port ${port}..."
-nohup java -Xmx256m -Xms128m -jar ${jar_file} \
-  -Dserver.port=${port} \
-  -Deureka.instance.hostname=$(hostname -f) \
-  > /var/log/eureka-server.log 2>&1 &
+echo "Waiting for Eureka to become available..."
 
-sleep 3
-if pgrep -f "eureka-server.*jar" > /dev/null; then
-  echo "Eureka Server started successfully"
-else
-  echo "WARNING: Eureka Server process not found"
-fi
+for i in {1..60}; do
+  if curl -sf http://localhost:8761/eureka/apps > /dev/null; then
+    echo "Eureka is UP!"
+    break
+  fi
 
+  echo "Eureka not ready yet..."
+  sleep 5
+done
+
+echo "Eureka container launched successfully"

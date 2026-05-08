@@ -33,6 +33,10 @@ provider "aws" {
   region  = var.aws_region
   profile = "vocareum"
 
+  skip_credentials_validation = true
+  skip_metadata_api_check     = true
+  skip_requesting_account_id  = true
+
   default_tags {
     tags = {
       Environment = var.environment

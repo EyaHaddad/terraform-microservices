@@ -19,6 +19,7 @@ variable "project_name" {
 variable "jar_bucket_name" {
   description = "Name of the S3 bucket used to store application JARs"
   type        = string
+  default     = "ecommerce-jars-bucket"
 }
 
 variable "vpc_cidr" {
@@ -42,7 +43,7 @@ variable "private_subnet_cidrs" {
 variable "container_port_gateway" {
   description = "Container port for API Gateway"
   type        = number
-  default     = 8080
+  default     = 8089
 }
 
 variable "container_port_product" {
@@ -88,7 +89,7 @@ variable "desired_count" {
 }
 
 variable "container_images" {
-  description = "Container images for services (will be updated with ECR URIs)"
+  description = "Container images for services (Docker Hub images used by EC2 and local runs)"
   type = object({
     api_gateway = string
     product     = string
@@ -97,10 +98,10 @@ variable "container_images" {
     activemq    = string
   })
   default = {
-    api_gateway = "ecommerce/api-gateway:latest"
-    product     = "ecommerce/product-service:latest"
-    cart        = "ecommerce/cart-service:latest"
-    eureka      = "ecommerce/eureka-server:latest"
+    api_gateway = "eyahaddad/api-gateway:latest"
+    product     = "eyahaddad/product-service:latest"
+    cart        = "eyahaddad/cart-service:latest"
+    eureka      = "eyahaddad/eureka-server:latest"
     activemq    = "apache/activemq-classic:latest"
   }
 }
