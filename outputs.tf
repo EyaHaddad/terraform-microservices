@@ -4,7 +4,7 @@ output "alb_dns_name" {
 }
 
 output "alb_url" {
-  description = "Full URL of the API Gateway via load balancer"
+  description = "Public entry URL routed by the Main ALB to Nginx"
   value       = "http://${aws_lb.main.dns_name}"
 }
 
@@ -16,22 +16,6 @@ output "ec2_eureka_server_private_ip" {
 output "ec2_eureka_server_instance_id" {
   description = "Instance ID of Eureka Server"
   value       = aws_instance.eureka_server.id
-}
-
-output "ec2_product_service_private_ip" {
-  value = try(aws_instance.product_service[0].private_ip, null)
-}
-
-output "ec2_product_service_instance_id" {
-  value = try(aws_instance.product_service[0].id, null)
-}
-
-output "ec2_cart_service_private_ip" {
-  value = try(aws_instance.cart_service[0].private_ip, null)
-}
-
-output "ec2_cart_service_instance_id" {
-  value = try(aws_instance.cart_service[0].id, null)
 }
 
 output "product_alb_dns_name" {
@@ -54,12 +38,14 @@ output "cart_alb_url" {
   value       = "http://${aws_lb.cart.dns_name}"
 }
 
-output "ec2_api_gateway_private_ip" {
-  value = aws_instance.api_gateway.private_ip
+output "nginx_gateway_asg_name" {
+  description = "Name of the Nginx gateway Auto Scaling Group"
+  value       = aws_autoscaling_group.nginx_gateway.name
 }
 
-output "ec2_api_gateway_instance_id" {
-  value = aws_instance.api_gateway.id
+output "nginx_gateway_url" {
+  description = "Public URL of the Nginx gateway through the Main ALB"
+  value       = "http://${aws_lb.main.dns_name}"
 }
 
 output "ec2_key_pair_name" {
@@ -80,4 +66,14 @@ output "ec2_security_group_id" {
 output "vpc_id" {
   description = "VPC ID"
   value       = aws_vpc.main.id
+}
+
+output "activemq_public_ip" {
+  description = "Public IP of ActiveMQ instance"
+  value       = aws_instance.activemq.public_ip
+}
+
+output "activemq_console_url" {
+  description = "ActiveMQ Web Console URL (admin/admin)"
+  value       = "http://${aws_instance.activemq.public_ip}:8161"
 }

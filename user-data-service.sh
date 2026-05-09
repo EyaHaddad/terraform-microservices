@@ -1,5 +1,6 @@
 #!/bin/bash
-set -euxo pipefail
+# Don't use set -e here — Eureka/ActiveMQ waits are best-effort and must not abort
+set -uxo pipefail
 
 yum update -y
 yum install -y docker curl
@@ -13,17 +14,19 @@ cd /opt/ecommerce
 echo "Stopping old container..."
 docker rm -f ${SERVICE_NAME} || true
 
-echo "Waiting for Eureka server..."
+if [ "${EUREKA_URL}" != "" ]; then
+  echo "Waiting for Eureka server..."
 
-for i in {1..60}; do
-  if curl -sf ${EUREKA_URL}apps > /dev/null; then
-    echo "Eureka is reachable!"
-    break
-  fi
+  for i in {1..60}; do
+    if curl -sf ${EUREKA_URL}apps > /dev/null; then
+      echo "Eureka is reachable!"
+      break
+    fi
 
-  echo "Eureka not ready yet..."
-  sleep 5
-done
+    echo "Eureka not ready yet..."
+    sleep 5
+  done
+fi
 
 if [ "${ACTIVEMQ_URL}" != "" ]; then
   broker_host=$(echo "${ACTIVEMQ_URL}" | sed -E 's#^tcp://([^:]+):([0-9]+).*#\1#')
@@ -53,7 +56,16 @@ docker run -d \
   -e SPRING_PROFILES_ACTIVE=docker \
   -e SERVER_PORT=${PORT} \
   -e EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_URL} \
+  -e EUREKA_CLIENT_ENABLED=false \
+  -e EUREKA_CLIENT_REGISTER_WITH_EUREKA=false \
+  -e EUREKA_CLIENT_FETCH_REGISTRY=false \
+  -e SPRING_CLOUD_DISCOVERY_ENABLED=false \
   -e SPRING_ACTIVEMQ_BROKER_URL=${ACTIVEMQ_URL} \
+  -e PRODUCT_SERVICE_URL=${PRODUCT_SERVICE_URL} \
+  -e CART_SERVICE_URL=${CART_SERVICE_URL} \
+  -e SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_ENABLED=false \
+  -e SPRING_CLOUD_GATEWAY_ROUTES_0_URI=${PRODUCT_SERVICE_URL} \
+  -e SPRING_CLOUD_GATEWAY_ROUTES_1_URI=${CART_SERVICE_URL} \
   ${DOCKER_IMAGE}
 
 echo "Container started successfully"

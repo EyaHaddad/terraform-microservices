@@ -91,13 +91,13 @@ variable "desired_count" {
 variable "product_min_size" {
   description = "Minimum number of Product Service instances"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "product_desired_capacity" {
   description = "Desired number of Product Service instances"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "product_max_size" {
@@ -109,19 +109,37 @@ variable "product_max_size" {
 variable "cart_min_size" {
   description = "Minimum number of Cart Service instances"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "cart_desired_capacity" {
   description = "Desired number of Cart Service instances"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "cart_max_size" {
   description = "Maximum number of Cart Service instances"
   type        = number
   default     = 4
+}
+
+variable "nginx_min_size" {
+  description = "Minimum number of Nginx gateway instances"
+  type        = number
+  default     = 1
+}
+
+variable "nginx_desired_capacity" {
+  description = "Desired number of Nginx gateway instances"
+  type        = number
+  default     = 1
+}
+
+variable "nginx_max_size" {
+  description = "Maximum number of Nginx gateway instances"
+  type        = number
+  default     = 3
 }
 
 variable "autoscaling_target_cpu" {
@@ -136,12 +154,6 @@ variable "autoscaling_requests_per_target" {
   default     = 100
 }
 
-variable "enable_standalone_service_instances" {
-  description = "Create standalone EC2 instances for API Gateway, Product and Cart instead of relying only on Auto Scaling Groups"
-  type        = bool
-  default     = false
-}
-
 variable "container_images" {
   description = "Container images for services (Docker Hub images used by EC2 and local runs)"
   type = object({
@@ -152,7 +164,7 @@ variable "container_images" {
     activemq    = string
   })
   default = {
-    api_gateway = "eyahaddad/api-gateway:latest"
+    api_gateway = "eyahaddad/api-gateway4:latest"
     product     = "eyahaddad/product-service:latest"
     cart        = "eyahaddad/cart-service:latest"
     eureka      = "eyahaddad/eureka-server:latest"
@@ -163,7 +175,7 @@ variable "container_images" {
 variable "enable_nat_gateway" {
   description = "Enable NAT Gateway for private subnets"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "log_retention_days" {

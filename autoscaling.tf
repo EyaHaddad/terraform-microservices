@@ -7,7 +7,7 @@ resource "aws_launch_template" "product" {
   key_name      = aws_key_pair.ec2_key.key_name
 
   network_interfaces {
-    associate_public_ip_address = true
+    associate_public_ip_address = false
     security_groups             = [aws_security_group.ec2.id]
   }
 
@@ -30,11 +30,13 @@ resource "aws_launch_template" "product" {
   }
 
   user_data = base64encode(templatefile("${path.module}/user-data-service.sh", {
-    SERVICE_NAME = "product-service"
-    DOCKER_IMAGE = var.container_images.product
-    PORT         = var.container_port_product
-    EUREKA_URL   = local.eureka_url
-    ACTIVEMQ_URL = local.activemq_url
+    SERVICE_NAME        = "product-service"
+    DOCKER_IMAGE        = var.container_images.product
+    PORT                = var.container_port_product
+    EUREKA_URL          = local.eureka_url
+    ACTIVEMQ_URL        = local.activemq_url
+    PRODUCT_SERVICE_URL = ""
+    CART_SERVICE_URL    = ""
   }))
 }
 
@@ -45,7 +47,7 @@ resource "aws_launch_template" "cart" {
   key_name      = aws_key_pair.ec2_key.key_name
 
   network_interfaces {
-    associate_public_ip_address = true
+    associate_public_ip_address = false
     security_groups             = [aws_security_group.ec2.id]
   }
 
@@ -68,22 +70,24 @@ resource "aws_launch_template" "cart" {
   }
 
   user_data = base64encode(templatefile("${path.module}/user-data-service.sh", {
-    SERVICE_NAME = "cart-service"
-    DOCKER_IMAGE = var.container_images.cart
-    PORT         = var.container_port_cart
-    EUREKA_URL   = local.eureka_url
-    ACTIVEMQ_URL = local.activemq_url
+    SERVICE_NAME        = "cart-service"
+    DOCKER_IMAGE        = var.container_images.cart
+    PORT                = var.container_port_cart
+    EUREKA_URL          = local.eureka_url
+    ACTIVEMQ_URL        = local.activemq_url
+    PRODUCT_SERVICE_URL = ""
+    CART_SERVICE_URL    = ""
   }))
 }
 
-resource "aws_launch_template" "gateway" {
-  name_prefix   = "${var.project_name}-gateway-"
+resource "aws_launch_template" "nginx_gateway" {
+  name_prefix   = "${var.project_name}-nginx-gateway-"
   image_id      = data.aws_ami.amazon_linux_2.id
-  instance_type = "t3.medium"
+  instance_type = "t3.micro"
   key_name      = aws_key_pair.ec2_key.key_name
 
   network_interfaces {
-    associate_public_ip_address = true
+    associate_public_ip_address = false
     security_groups             = [aws_security_group.ec2.id]
   }
 
@@ -91,8 +95,8 @@ resource "aws_launch_template" "gateway" {
     resource_type = "instance"
 
     tags = {
-      Name    = "${var.project_name}-api-gateway"
-      Service = "api-gateway"
+      Name    = "${var.project_name}-nginx-gateway"
+      Service = "nginx-gateway"
     }
   }
 
@@ -100,17 +104,14 @@ resource "aws_launch_template" "gateway" {
     resource_type = "volume"
 
     tags = {
-      Name    = "${var.project_name}-api-gateway-volume"
-      Service = "api-gateway"
+      Name    = "${var.project_name}-nginx-gateway-volume"
+      Service = "nginx-gateway"
     }
   }
 
-  user_data = base64encode(templatefile("${path.module}/user-data-service.sh", {
-    SERVICE_NAME = "api-gateway"
-    DOCKER_IMAGE = var.container_images.api_gateway
-    PORT         = var.container_port_gateway
-    EUREKA_URL   = local.eureka_url
-    ACTIVEMQ_URL = local.activemq_url
+  user_data = base64encode(templatefile("${path.module}/user-data-nginx-gateway.sh", {
+    PRODUCT_SERVICE_URL = "http://${aws_lb.product.dns_name}"
+    CART_SERVICE_URL    = "http://${aws_lb.cart.dns_name}"
   }))
 }
 
@@ -118,7 +119,7 @@ resource "aws_autoscaling_group" "product" {
   desired_capacity    = var.product_desired_capacity
   max_size            = var.product_max_size
   min_size            = var.product_min_size
-  vpc_zone_identifier = aws_subnet.public[*].id
+  vpc_zone_identifier = aws_subnet.private[*].id
 
   launch_template {
     id      = aws_launch_template.product.id
@@ -128,8 +129,8 @@ resource "aws_autoscaling_group" "product" {
   target_group_arns = [aws_lb_target_group.product_service.arn]
 
   health_check_type         = "ELB"
-  health_check_grace_period = 300
-  depends_on                = [aws_instance.eureka_server, aws_instance.activemq]
+  health_check_grace_period = 600
+  depends_on                = [aws_route_table_association.private, aws_instance.eureka_server, aws_instance.activemq]
 
   tag {
     key                 = "Name"
@@ -142,7 +143,7 @@ resource "aws_autoscaling_group" "cart" {
   desired_capacity    = var.cart_desired_capacity
   max_size            = var.cart_max_size
   min_size            = var.cart_min_size
-  vpc_zone_identifier = aws_subnet.public[*].id
+  vpc_zone_identifier = aws_subnet.private[*].id
 
   launch_template {
     id      = aws_launch_template.cart.id
@@ -152,8 +153,8 @@ resource "aws_autoscaling_group" "cart" {
   target_group_arns = [aws_lb_target_group.cart_service.arn]
 
   health_check_type         = "ELB"
-  health_check_grace_period = 300
-  depends_on                = [aws_instance.eureka_server, aws_instance.activemq]
+  health_check_grace_period = 600
+  depends_on                = [aws_route_table_association.private, aws_instance.eureka_server, aws_instance.activemq]
 
   tag {
     key                 = "Name"
@@ -162,30 +163,31 @@ resource "aws_autoscaling_group" "cart" {
   }
 }
 
-resource "aws_autoscaling_group" "gateway" {
-  desired_capacity    = var.desired_count
-  max_size            = 3
-  min_size            = 1
-  vpc_zone_identifier = aws_subnet.public[*].id
+resource "aws_autoscaling_group" "nginx_gateway" {
+  desired_capacity    = var.nginx_desired_capacity
+  max_size            = var.nginx_max_size
+  min_size            = var.nginx_min_size
+  vpc_zone_identifier = aws_subnet.private[*].id
 
   launch_template {
-    id      = aws_launch_template.gateway.id
+    id      = aws_launch_template.nginx_gateway.id
     version = "$Latest"
   }
 
-  target_group_arns = [aws_lb_target_group.api_gateway.arn]
+  target_group_arns = [aws_lb_target_group.nginx_gateway.arn]
 
   health_check_type         = "ELB"
-  health_check_grace_period = 300
-  depends_on                = [aws_instance.eureka_server, aws_instance.activemq]
+  health_check_grace_period = 180
+  depends_on                = [aws_route_table_association.private, aws_lb_listener.product, aws_lb_listener.cart]
 
   tag {
     key                 = "Name"
-    value               = "${var.project_name}-api-gateway"
+    value               = "${var.project_name}-nginx-gateway"
     propagate_at_launch = true
   }
 }
 
+# Autoscaling policies for product and cart services based on CPU utilization and request count per target
 resource "aws_autoscaling_policy" "product_request_tracking" {
   name                   = "${var.project_name}-product-requests-tracking"
   policy_type            = "TargetTrackingScaling"
@@ -197,6 +199,20 @@ resource "aws_autoscaling_policy" "product_request_tracking" {
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
       resource_label         = "${aws_lb.product.arn_suffix}/${aws_lb_target_group.product_service.arn_suffix}"
+    }
+  }
+}
+
+resource "aws_autoscaling_policy" "nginx_cpu_tracking" {
+  name                   = "${var.project_name}-nginx-cpu-tracking"
+  policy_type            = "TargetTrackingScaling"
+  autoscaling_group_name = aws_autoscaling_group.nginx_gateway.name
+
+  target_tracking_configuration {
+    target_value = var.autoscaling_target_cpu
+
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
     }
   }
 }
@@ -242,11 +258,4 @@ resource "aws_autoscaling_policy" "cart_cpu_tracking" {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
   }
-}
-
-resource "aws_autoscaling_policy" "gateway_scale_up" {
-  name                   = "gateway-scale-up"
-  scaling_adjustment     = 1
-  adjustment_type        = "ChangeInCapacity"
-  autoscaling_group_name = aws_autoscaling_group.gateway.name
 }

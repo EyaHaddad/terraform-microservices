@@ -19,7 +19,7 @@ resource "aws_security_group" "ec2" {
     from_port       = 8081
     to_port         = 8081
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
+    security_groups = [aws_security_group.internal_alb.id]
   }
 
   # ALB → Cart Service
@@ -27,7 +27,7 @@ resource "aws_security_group" "ec2" {
     from_port       = 8082
     to_port         = 8082
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
+    security_groups = [aws_security_group.internal_alb.id]
   }
 
   # ALB → API Gateway
@@ -35,7 +35,7 @@ resource "aws_security_group" "ec2" {
     from_port       = 8089
     to_port         = 8089
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
+    security_groups = [aws_security_group.public_alb.id]
   }
 
   egress {
@@ -75,105 +75,25 @@ locals {
   activemq_url = "tcp://${aws_instance.activemq.private_ip}:61616"
 }
 
-# Data source for existing EC2InstanceRole
-data "aws_iam_role" "ec2_instance_role" {
-  name = "LabRole"
-}
-
 # EC2 Instance for Eureka Server
 resource "aws_instance" "eureka_server" {
   ami                         = data.aws_ami.amazon_linux_2.id
   instance_type               = "t3.medium"
   key_name                    = aws_key_pair.ec2_key.key_name
-  subnet_id                   = aws_subnet.public[0].id
-  associate_public_ip_address = true
+  subnet_id                   = aws_subnet.private[0].id
+  associate_public_ip_address = false
 
   vpc_security_group_ids = [aws_security_group.ec2.id]
 
-  user_data = base64encode(templatefile("${path.module}/user-data-eureka.sh", {
+  user_data = templatefile("${path.module}/user-data-eureka.sh", {
     eureka_image = var.container_images.eureka
-  }))
+  })
 
   tags = {
     Name = "${var.project_name}-eureka-server"
   }
-}
 
-# EC2 Instance for Product Service
-resource "aws_instance" "product_service" {
-  count                       = var.enable_standalone_service_instances ? 1 : 0
-  ami                         = data.aws_ami.amazon_linux_2.id
-  instance_type               = "t3.medium"
-  key_name                    = aws_key_pair.ec2_key.key_name
-  subnet_id                   = aws_subnet.public[0].id
-  associate_public_ip_address = true
-
-  vpc_security_group_ids = [aws_security_group.ec2.id]
-
-  user_data = base64encode(templatefile("${path.module}/user-data-service.sh", {
-    SERVICE_NAME = "product-service"
-    DOCKER_IMAGE = var.container_images.product
-    PORT         = var.container_port_product
-    EUREKA_URL   = local.eureka_url
-    ACTIVEMQ_URL = local.activemq_url
-  }))
-
-  tags = {
-    Name = "${var.project_name}-product-service"
-  }
-
-  depends_on = [aws_instance.eureka_server, aws_instance.activemq]
-}
-
-# EC2 Instance for Cart Service
-resource "aws_instance" "cart_service" {
-  count                       = var.enable_standalone_service_instances ? 1 : 0
-  ami                         = data.aws_ami.amazon_linux_2.id
-  instance_type               = "t3.medium"
-  key_name                    = aws_key_pair.ec2_key.key_name
-  subnet_id                   = aws_subnet.public[0].id
-  associate_public_ip_address = true
-
-  vpc_security_group_ids = [aws_security_group.ec2.id]
-
-  user_data = base64encode(templatefile("${path.module}/user-data-service.sh", {
-    SERVICE_NAME = "cart-service"
-    DOCKER_IMAGE = var.container_images.cart
-    PORT         = var.container_port_cart
-    EUREKA_URL   = local.eureka_url
-    ACTIVEMQ_URL = local.activemq_url
-  }))
-
-  tags = {
-    Name = "${var.project_name}-cart-service"
-  }
-
-  depends_on = [aws_instance.eureka_server, aws_instance.activemq]
-}
-
-# EC2 Instance for API Gateway
-resource "aws_instance" "api_gateway" {
-  ami                         = data.aws_ami.amazon_linux_2.id
-  instance_type               = "t3.medium"
-  key_name                    = aws_key_pair.ec2_key.key_name
-  subnet_id                   = aws_subnet.public[0].id
-  associate_public_ip_address = true
-
-  vpc_security_group_ids = [aws_security_group.ec2.id]
-
-  user_data = base64encode(templatefile("${path.module}/user-data-service.sh", {
-    SERVICE_NAME = "api-gateway"
-    DOCKER_IMAGE = var.container_images.api_gateway
-    PORT         = var.container_port_gateway
-    EUREKA_URL   = local.eureka_url
-    ACTIVEMQ_URL = local.activemq_url
-  }))
-
-  tags = {
-    Name = "${var.project_name}-api-gateway"
-  }
-
-  depends_on = [aws_instance.eureka_server]
+  depends_on = [aws_route_table_association.private]
 }
 
 # EC2 Instance for ActiveMQ
@@ -181,8 +101,8 @@ resource "aws_instance" "activemq" {
   ami                         = data.aws_ami.amazon_linux_2.id
   instance_type               = "t3.medium"
   key_name                    = aws_key_pair.ec2_key.key_name
-  subnet_id                   = aws_subnet.public[0].id
-  associate_public_ip_address = true
+  subnet_id                   = aws_subnet.public[0].id   # public subnet → IP publique
+  associate_public_ip_address = true                       # console web accessible via http://<PUBLIC_IP>:8161
 
   vpc_security_group_ids = [aws_security_group.ec2.id]
 
@@ -193,6 +113,8 @@ resource "aws_instance" "activemq" {
   tags = {
     Name = "${var.project_name}-activemq"
   }
+
+  depends_on = [aws_route_table_association.private]
 }
 
 # EC2 Key Pair
